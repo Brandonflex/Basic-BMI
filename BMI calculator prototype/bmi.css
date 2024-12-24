@@ -1,0 +1,14 @@
+div  {
+    background-color: beige;
+    align-items: center;
+    font-weight: bold;
+}
+
+input {
+    font-weight: bold;
+}
+
+input:hover{
+    cursor:pointer;
+    text-decoration: underline;
+}

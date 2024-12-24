@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <link href="bmi.css">
+        <title>BMI</title>
+    </head>
+    <body>
+
+        <div>
+            <div> 
+                <h2>
+                    BMI calculator-DEMO.BRandon
+                </h2>
+                <label for="weight">weight in KG</label>
+                <input id="weight" type="numbers" >
+        
+                <br>
+        
+                <label for="height">height in (INCHES)</label>
+                <input id="height" type="mumbers">
+        
+                <button onclick="calculateBmi()">Submit</button>
+                <button onclick="reload()">clear</button>
+        
+                <h4 id="heading"></h4>
+                <h4 id="bmi-output"></h4>
+                <h4 id="message"></h4>
+            </div>
+        </div>
+
+
+        <script src="bmi.js"></script>
+    </body>
+</html>
