@@ -4,21 +4,22 @@ A small, dependency-free BMI calculator (HTML, CSS, vanilla JS).
 
 ## Run
 
-Open `BMI calculator prototype/bmi.html` in a browser, or serve the folder:
+Open `BMI calculator prototype/index.html` in a browser, or serve the folder:
 
 ```
 cd "BMI calculator prototype"
-python3 -m http.server 8080
+python3 serve.py
 ```
 
 ## Structure
 
 | File | Purpose |
 | --- | --- |
-| `bmi.html` | Form (metric/imperial toggle, weight, height) and result area |
+| `index.html` | Form (metric/imperial toggle, weight, height) and result area |
 | `bmi.css` | Styling, including light/dark theme |
 | `bmi.js` | Calculation, validation and categories (pure functions) plus DOM wiring |
 | `bmi.test.js` | Node tests for the pure logic |
+| `serve.py` | Optional local server (no caching) |
 
 ## Behaviour
 
