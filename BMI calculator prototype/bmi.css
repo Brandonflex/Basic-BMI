@@ -250,8 +250,18 @@ h1 {
 }
 
 .result__category {
-    margin: 0 0 1.25rem;
+    margin: 0;
     font-weight: 600;
+}
+
+.result__detail {
+    font-weight: 400;
+}
+
+.result__range {
+    margin: 0.25rem 0 1.25rem;
+    font-size: 0.9rem;
+    color: var(--muted);
 }
 
 .result[data-category="under"]   .result__category { color: var(--under-text); }

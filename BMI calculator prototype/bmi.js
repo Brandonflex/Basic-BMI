@@ -1,7 +1,10 @@
 /*
  * BMI = weight (kg) / height (m)^2
  * Imperial inputs (lb, ft + in) are converted to kg and m first, so there is
- * a single formula. Categories follow the WHO adult classification.
+ * a single formula. Categories follow the WHO adult classification
+ * (https://www.who.int/data/gho/data/themes/topics/topic-details/GHO/body-mass-index).
+ * Like most calculators (e.g. CDC), the BMI is rounded to one decimal and the
+ * category is taken from that displayed value.
  */
 
 const LB_TO_KG = 0.45359237;
@@ -36,24 +39,39 @@ function calculateBmi(weightKg, heightM) {
     return weightKg / (heightM * heightM);
 }
 
+// Round half up to one decimal. The tiny offset absorbs floating-point error
+// so exact ties round up (48 kg at 160 cm is exactly 18.75 and must show 18.8,
+// not 18.7). Real float error is ~1e-14, far below the offset.
+function round1(x) {
+    return Math.round(x * 10 + 1e-9) / 10;
+}
+
 // Expects a BMI already rounded to one decimal, so the label always matches
 // the number the user sees (24.96 displays as 25.0 and is "Overweight").
+// `detail` is the WHO sub-grade where one exists.
 function categorize(bmi) {
-    if (bmi < 18.5) return { id: "under", label: "Underweight" };
-    if (bmi < 25) return { id: "healthy", label: "Healthy weight" };
-    if (bmi < 30) return { id: "over", label: "Overweight" };
-    return { id: "obese", label: "Obese" };
+    if (bmi < 16) return { id: "under", label: "Underweight", detail: "Severe thinness" };
+    if (bmi < 17) return { id: "under", label: "Underweight", detail: "Moderate thinness" };
+    if (bmi < 18.5) return { id: "under", label: "Underweight", detail: "Mild thinness" };
+    if (bmi < 25) return { id: "healthy", label: "Healthy weight", detail: "" };
+    if (bmi < 30) return { id: "over", label: "Overweight", detail: "" };
+    if (bmi < 35) return { id: "obese", label: "Obese", detail: "Class I" };
+    if (bmi < 40) return { id: "obese", label: "Obese", detail: "Class II" };
+    return { id: "obese", label: "Obese", detail: "Class III" };
 }
 
 const isBlank = (raw) => String(raw ?? "").trim() === "";
 
 // Parses a number from a raw input string. Returns { value } or { error }.
+// Plain decimals only: rejects "1e3", "0x10", "Infinity", "-5".
+const DECIMAL = /^(\d+\.?\d*|\.\d+)$/;
+
 function parseNumber(raw, label) {
-    const value = Number(String(raw).trim());
-    if (!Number.isFinite(value) || value < 0) {
+    const text = String(raw).trim();
+    if (!DECIMAL.test(text)) {
         return { error: `${label} must be a positive number.` };
     }
-    return { value };
+    return { value: Number(text) };
 }
 
 function checkRange(value, [min, max], label, unit) {
@@ -93,7 +111,24 @@ function parseHeight(raw, inchesRaw, system) {
     return checkRange(total, units.heightRange, "Height", "inches in total");
 }
 
-// Pure entry point: raw input strings in, { bmi, category } or { errors } out.
+// Weight range that keeps BMI within the healthy band (18.5 to 24.9) at the
+// given height, in the user's unit. Rounded inwards so every weight inside
+// the range is guaranteed to display as healthy.
+function healthyRange(heightM, system) {
+    const factor = system === "imperial" ? 1 / LB_TO_KG : 1;
+    const digits = system === "imperial" ? 0 : 1;
+    const scale = 10 ** digits;
+    const lowest = 18.5 * heightM * heightM * factor;
+    const highest = 24.9 * heightM * heightM * factor;
+    return {
+        min: Math.ceil(lowest * scale - 1e-9) / scale,
+        max: Math.floor(highest * scale + 1e-9) / scale,
+        unit: UNITS[system].weightUnit,
+        digits,
+    };
+}
+
+// Pure entry point: raw input strings in, { bmi, category, range } or { errors } out.
 function computeResult({ weight, height, inches = "", system }) {
     const units = UNITS[system];
     const w = parseWeight(weight, units);
@@ -103,9 +138,9 @@ function computeResult({ weight, height, inches = "", system }) {
         return { errors: { weight: w.error, height: h.error } };
     }
 
-    const raw = calculateBmi(units.toKg(w.value), units.toMeters(h.value));
-    const bmi = Math.round(raw * 10) / 10;
-    return { bmi, category: categorize(bmi) };
+    const heightM = units.toMeters(h.value);
+    const bmi = round1(calculateBmi(units.toKg(w.value), heightM));
+    return { bmi, category: categorize(bmi), range: healthyRange(heightM, system) };
 }
 
 /* ---------- DOM ---------- */
@@ -154,9 +189,13 @@ function initUi() {
         if (first) first.focus();
     }
 
-    function showResult({ bmi, category }) {
+    function showResult({ bmi, category, range }) {
         $("bmi-output").textContent = bmi.toFixed(1);
         $("message").textContent = category.label;
+        $("detail").textContent = category.detail ? `\u00b7 ${category.detail}` : "";
+        $("range").textContent =
+            `Healthy weight for your height: ${range.min.toFixed(range.digits)}` +
+            `\u2013${range.max.toFixed(range.digits)} ${range.unit}`;
         resultBox.dataset.category = category.id;
 
         const clamped = Math.min(Math.max(bmi, SCALE_MIN), SCALE_MAX);
@@ -181,7 +220,17 @@ function initUi() {
             inches: inchesInput.value,
             system: currentSystem(),
         });
-        if (result.errors) showErrors(result.errors);
+        if (result.errors) {
+            // A number input reports "" for text it cannot parse (e.g. "1e"),
+            // which would otherwise read as "empty".
+            const unparsable = { weight: fields.weight.input, height: fields.height.input };
+            for (const [name, input] of Object.entries(unparsable)) {
+                const bad = input.validity.badInput ||
+                    (name === "height" && inchesInput.validity.badInput);
+                if (bad) result.errors[name] = "Enter a valid number.";
+            }
+            showErrors(result.errors);
+        }
         else showResult(result);
     });
 
@@ -214,5 +263,5 @@ if (typeof document !== "undefined") {
 }
 
 if (typeof module !== "undefined") {
-    module.exports = { calculateBmi, categorize, computeResult };
+    module.exports = { calculateBmi, categorize, computeResult, round1 };
 }
