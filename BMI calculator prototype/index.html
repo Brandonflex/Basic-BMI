@@ -3,93 +3,117 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>BMI Calculator</title>
+    <meta name="color-scheme" content="light dark">
+    <title>Body Mass Index</title>
     <link rel="stylesheet" href="bmi.css">
 </head>
 <body>
-    <main class="card">
-        <h1>BMI Calculator</h1>
-        <p class="lead">Body mass index for adults (18 and over).</p>
+    <div class="app">
 
-        <form id="bmi-form" novalidate>
-            <fieldset class="units">
-                <legend class="visually-hidden">Units</legend>
-                <label class="units__option">
-                    <input type="radio" name="units" value="metric" checked>
-                    <span>Metric</span>
-                </label>
-                <label class="units__option">
-                    <input type="radio" name="units" value="imperial">
-                    <span>Imperial</span>
-                </label>
-            </fieldset>
+        <main class="panel panel--input">
+            <header class="intro">
+                <p class="eyebrow">Basic BMI</p>
+                <h1>Body mass index</h1>
+                <p class="lead">For adults 18 and over. The reading updates as you type or drag.</p>
+            </header>
 
-            <div class="field">
-                <label for="weight">Weight</label>
-                <div class="field__row">
-                    <div class="input-wrap">
-                        <input id="weight" name="weight" type="number" inputmode="decimal"
-                               min="0" step="any" autocomplete="off" aria-describedby="weight-error">
-                        <span class="input-wrap__unit" data-unit="weight">kg</span>
+            <form id="bmi-form" novalidate autocomplete="off">
+                <fieldset class="units">
+                    <legend class="visually-hidden">Units</legend>
+                    <label class="units__option">
+                        <input type="radio" name="units" value="metric" checked>
+                        <span>Metric</span>
+                    </label>
+                    <label class="units__option">
+                        <input type="radio" name="units" value="imperial">
+                        <span>Imperial</span>
+                    </label>
+                </fieldset>
+
+                <div class="field">
+                    <label class="field__label" for="weight">Weight</label>
+                    <div class="field__row">
+                        <div class="input-wrap">
+                            <input id="weight" name="weight" type="number" inputmode="decimal"
+                                   min="0" step="any" placeholder="0" aria-describedby="weight-error">
+                            <span class="input-wrap__unit" data-unit="weight">kg</span>
+                        </div>
                     </div>
+                    <input class="slider" id="weight-slider" type="range" aria-label="Adjust weight">
+                    <p id="weight-error" class="field__error" hidden></p>
                 </div>
-                <p id="weight-error" class="field__error" hidden></p>
-            </div>
 
-            <div class="field">
-                <label for="height">Height</label>
-                <div class="field__row">
-                    <div class="input-wrap">
-                        <input id="height" name="height" type="number" inputmode="decimal"
-                               min="0" step="any" autocomplete="off" aria-describedby="height-error">
-                        <span class="input-wrap__unit" data-unit="height">cm</span>
+                <div class="field">
+                    <label class="field__label" for="height">Height</label>
+                    <div class="field__row">
+                        <div class="input-wrap">
+                            <input id="height" name="height" type="number" inputmode="decimal"
+                                   min="0" step="any" placeholder="0" aria-describedby="height-error">
+                            <span class="input-wrap__unit" data-unit="height">cm</span>
+                        </div>
+                        <div class="input-wrap" id="inches-wrap" hidden>
+                            <input id="inches" name="inches" type="number" inputmode="decimal"
+                                   min="0" step="any" placeholder="0" aria-label="Height, inches"
+                                   aria-describedby="height-error">
+                            <span class="input-wrap__unit">in</span>
+                        </div>
                     </div>
-                    <div class="input-wrap" id="inches-wrap" hidden>
-                        <input id="inches" name="inches" type="number" inputmode="decimal"
-                               min="0" step="any" autocomplete="off" aria-label="Height, inches"
-                               aria-describedby="height-error">
-                        <span class="input-wrap__unit">in</span>
-                    </div>
+                    <input class="slider" id="height-slider" type="range" aria-label="Adjust height">
+                    <p id="height-error" class="field__error" hidden></p>
                 </div>
-                <p id="height-error" class="field__error" hidden></p>
+
+                <button type="reset" class="reset">Reset</button>
+            </form>
+
+            <p class="note">
+                BMI is a screening measure, not a diagnosis. It does not account for
+                muscle mass, age or body composition. Talk to a health professional
+                about your results.
+            </p>
+        </main>
+
+        <section class="panel panel--readout readout" id="result" data-state="empty"
+                 aria-labelledby="readout-title">
+            <div class="readout__text">
+                <p class="readout__label" id="readout-title">Your BMI</p>
+                <p class="readout__value" id="bmi-output" aria-hidden="true">00.0</p>
+                <p class="readout__category">
+                    <span id="message">Enter your weight and height</span>
+                    <span class="readout__detail" id="detail"></span>
+                </p>
+                <p class="readout__range" id="range"></p>
             </div>
 
-            <div class="actions">
-                <button type="submit" class="btn btn--primary">Calculate</button>
-                <button type="reset" class="btn">Clear</button>
-            </div>
-        </form>
-
-        <section id="result" class="result" aria-live="polite" hidden>
-            <p class="result__label">Your BMI</p>
-            <p class="result__value" id="bmi-output"></p>
-            <p class="result__category"><span id="message"></span> <span class="result__detail" id="detail"></span></p>
-            <p class="result__range" id="range"></p>
-
-            <div class="scale" aria-hidden="true">
-                <div class="scale__bar">
-                    <span class="scale__seg scale__seg--under"></span>
-                    <span class="scale__seg scale__seg--healthy"></span>
-                    <span class="scale__seg scale__seg--over"></span>
-                    <span class="scale__seg scale__seg--obese"></span>
-                    <span class="scale__marker" id="marker"></span>
+            <div class="gauge" aria-hidden="true">
+                <div class="gauge__marks">
+                    <span style="bottom:100%">40</span>
+                    <span style="bottom:80%">35</span>
+                    <span style="bottom:60%">30</span>
+                    <span style="bottom:40%">25</span>
+                    <span style="bottom:20%">20</span>
+                    <span style="bottom:14%">18.5</span>
+                    <span style="bottom:0%">15</span>
+                </div>
+                <div class="gauge__ticks"></div>
+                <div class="gauge__bar">
+                    <span class="zone zone--obese"></span>
+                    <span class="zone zone--over"></span>
+                    <span class="zone zone--healthy"></span>
+                    <span class="zone zone--under"></span>
+                    <span class="gauge__pointer" id="marker"></span>
+                </div>
+                <div class="gauge__names">
+                    <span data-zone="obese" style="bottom:80%">Obese</span>
+                    <span data-zone="over" style="bottom:50%">Overweight</span>
+                    <span data-zone="healthy" style="bottom:27%">Healthy</span>
+                    <span data-zone="under" style="bottom:7%">Underweight</span>
                 </div>
             </div>
 
-            <ul class="legend">
-                <li class="legend__item legend__item--under">Underweight <span>&lt; 18.5</span></li>
-                <li class="legend__item legend__item--healthy">Healthy <span>18.5&ndash;24.9</span></li>
-                <li class="legend__item legend__item--over">Overweight <span>25&ndash;29.9</span></li>
-                <li class="legend__item legend__item--obese">Obese <span>30+</span></li>
-            </ul>
+            <p class="visually-hidden" id="sr-status" aria-live="polite"></p>
         </section>
 
-        <p class="note">
-            BMI is a screening measure, not a diagnosis. It does not account for
-            muscle mass, age or body composition. Talk to a health professional
-            about your results.
-        </p>
-    </main>
+    </div>
 
     <script src="bmi.js"></script>
 </body>

@@ -15,13 +15,17 @@ python3 serve.py
 
 | File | Purpose |
 | --- | --- |
-| `index.html` | Form (metric/imperial toggle, weight, height) and result area |
-| `bmi.css` | Styling, including light/dark theme |
+| `index.html` | Inputs (unit switch, weight and height with sliders) and the readout with its gauge |
+| `bmi.css` | Styling: split layout, ruler gauge, light/dark theme, reduced-motion support |
 | `bmi.js` | Calculation, validation and categories (pure functions) plus DOM wiring |
 | `bmi.test.js` | Node tests for the pure logic |
 | `serve.py` | Optional local server (no caching) |
 
 ## Behaviour
+
+- Live: the reading updates as you type or drag a slider. The gauge marker slides, the number counts to its new value and the readout tints to the category colour. Enter shows any missing-field prompts.
+- Incomplete input dims the last reading ("Check your entries") instead of clearing it, and errors only appear once you pause or leave the field, so typing `175` does not flash an error at `1`.
+- Accessible: sliders are keyboard-operable, errors are tied to fields, the animated number is hidden from screen readers and a debounced status line announces the result, and `prefers-reduced-motion` disables the animation.
 
 - Metric (kg, cm) or imperial (lb, ft + in). Both are converted to kg and metres and use `kg / m²`.
 - The BMI is rounded half up to one decimal, and the category is taken from that displayed value, so the label always matches the number. Exact ties are handled correctly (48 kg at 160 cm is exactly 18.75 and shows 18.8).

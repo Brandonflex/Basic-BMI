@@ -145,20 +145,89 @@ function computeResult({ weight, height, inches = "", system }) {
 
 /* ---------- DOM ---------- */
 
+// Slider ranges per unit system. Typed values outside a range are still
+// valid input (the slider just parks at its end).
+const SLIDERS = {
+    metric: {
+        weight: { min: 30, max: 200, step: 0.5 },
+        height: { min: 120, max: 220, step: 1 },
+    },
+    imperial: {
+        weight: { min: 66, max: 440, step: 1 },
+        height: { min: 48, max: 87, step: 1 }, // total inches
+    },
+};
+
+const ERROR_DELAY_MS = 800; // idle time before showing an error while typing
+const STATUS_DELAY_MS = 700; // idle time before screen readers are updated
+const COUNT_MS = 600;
+
 function initUi() {
     const $ = (id) => document.getElementById(id);
     const form = $("bmi-form");
     const fields = {
-        weight: { input: $("weight"), error: $("weight-error") },
-        height: { input: $("height"), error: $("height-error") },
+        weight: { input: $("weight"), slider: $("weight-slider"), error: $("weight-error") },
+        height: { input: $("height"), slider: $("height-slider"), error: $("height-error") },
     };
     const inchesInput = $("inches");
     const inchesWrap = $("inches-wrap");
-    const resultBox = $("result");
+    const readout = $("result");
+    const output = $("bmi-output");
+    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
 
     const currentSystem = () => form.elements.units.value;
+    const isBlank = (input) => input.value.trim() === "" && !input.validity.badInput;
+
+    /* --- sliders --- */
+
+    function markTouched(slider, touched = true) {
+        if (touched) slider.dataset.touched = "";
+        else delete slider.dataset.touched;
+    }
+
+    function setFill(slider) {
+        const { min, max, value } = slider;
+        const pct = ((value - min) / (max - min)) * 100;
+        slider.style.setProperty("--fill", `${Math.min(Math.max(pct, 0), 100)}%`);
+    }
+
+    function configureSliders() {
+        const config = SLIDERS[currentSystem()];
+        for (const name of ["weight", "height"]) {
+            const slider = fields[name].slider;
+            Object.assign(slider, config[name]);
+            slider.value = (config[name].min + config[name].max) / 2;
+            markTouched(slider, false);
+            setFill(slider);
+        }
+    }
+
+    // Moves the sliders to match what is typed (when it is a number).
+    function syncSlidersFromInputs() {
+        const weight = Number(fields.weight.input.value);
+        if (!isBlank(fields.weight.input) && Number.isFinite(weight)) {
+            fields.weight.slider.value = weight;
+            markTouched(fields.weight.slider);
+        }
+        const height = Number(fields.height.input.value);
+        const inches = Number(inchesInput.value);
+        if (!isBlank(fields.height.input) || !isBlank(inchesInput)) {
+            const total = currentSystem() === "imperial" ? (height || 0) * 12 + (inches || 0) : height;
+            if (Number.isFinite(total)) {
+                fields.height.slider.value = total;
+                markTouched(fields.height.slider);
+            }
+        }
+        setFill(fields.weight.slider);
+        setFill(fields.height.slider);
+    }
+
+    /* --- errors --- */
+
+    let errorTimer = 0;
 
     function clearErrors() {
+        clearTimeout(errorTimer);
         for (const { input, error } of Object.values(fields)) {
             error.hidden = true;
             error.textContent = "";
@@ -167,16 +236,16 @@ function initUi() {
         inchesInput.removeAttribute("aria-invalid");
     }
 
-    function hideResult() {
-        resultBox.hidden = true;
-        delete resultBox.dataset.category;
-    }
-
-    function showErrors(errors) {
-        hideResult();
+    // Shows errors only for fields the user has put something into, unless
+    // `includeEmpty` (pressing Enter) asks for the "enter your..." prompts too.
+    function showErrors(errors, includeEmpty) {
+        clearErrors();
         let first = null;
         for (const [name, message] of Object.entries(errors)) {
             if (!message) continue;
+            const touched = !isBlank(fields[name].input) ||
+                (name === "height" && !isBlank(inchesInput));
+            if (!touched && !includeEmpty) continue;
             const { input, error } = fields[name];
             error.textContent = message;
             error.hidden = false;
@@ -186,21 +255,114 @@ function initUi() {
             }
             first = first || input;
         }
-        if (first) first.focus();
+        return first;
+    }
+
+    /* --- readout --- */
+
+    let shownBmi = null; // value currently displayed in the big numeral
+    let frame = 0;
+    let statusTimer = 0;
+    let hasResult = false;
+
+    function showNumber(target) {
+        cancelAnimationFrame(frame);
+        if (reducedMotion.matches || shownBmi === target) {
+            shownBmi = target;
+            output.textContent = target.toFixed(1);
+            return;
+        }
+        const from = shownBmi ?? SCALE_MIN;
+        const start = performance.now();
+        const step = (now) => {
+            const t = Math.min((now - start) / COUNT_MS, 1);
+            const eased = 1 - Math.pow(1 - t, 3);
+            output.textContent = (from + (target - from) * eased).toFixed(1);
+            if (t < 1) frame = requestAnimationFrame(step);
+            else shownBmi = target;
+        };
+        shownBmi = target;
+        frame = requestAnimationFrame(step);
     }
 
     function showResult({ bmi, category, range }) {
-        $("bmi-output").textContent = bmi.toFixed(1);
+        hasResult = true;
+        readout.dataset.state = "ready";
+        readout.dataset.category = category.id;
         $("message").textContent = category.label;
-        $("detail").textContent = category.detail ? `\u00b7 ${category.detail}` : "";
-        $("range").textContent =
-            `Healthy weight for your height: ${range.min.toFixed(range.digits)}` +
-            `\u2013${range.max.toFixed(range.digits)} ${range.unit}`;
-        resultBox.dataset.category = category.id;
+        $("detail").textContent = category.detail;
+        const lo = range.min.toFixed(range.digits);
+        const hi = range.max.toFixed(range.digits);
+        $("range").textContent = `Healthy for your height: ${lo}\u2013${hi} ${range.unit}`;
 
         const clamped = Math.min(Math.max(bmi, SCALE_MIN), SCALE_MAX);
-        $("marker").style.left = `${((clamped - SCALE_MIN) / (SCALE_MAX - SCALE_MIN)) * 100}%`;
-        resultBox.hidden = false;
+        $("marker").style.bottom = `${((clamped - SCALE_MIN) / (SCALE_MAX - SCALE_MIN)) * 100}%`;
+        showNumber(bmi);
+
+        clearTimeout(statusTimer);
+        statusTimer = setTimeout(() => {
+            const grade = category.detail ? `, ${category.detail}` : "";
+            $("sr-status").textContent =
+                `Your BMI is ${bmi.toFixed(1)}. ${category.label}${grade}. ` +
+                `Healthy weight for your height is ${lo} to ${hi} ${range.unit}.`;
+        }, STATUS_DELAY_MS);
+    }
+
+    // Input is incomplete or invalid. A result that was showing is dimmed
+    // rather than removed, so typing "175" digit by digit does not flicker.
+    function showIncomplete(anyInput) {
+        clearTimeout(statusTimer);
+        $("sr-status").textContent = "";
+        if (hasResult && anyInput) {
+            readout.dataset.state = "stale";
+            $("message").textContent = "Check your entries";
+            $("detail").textContent = "";
+            $("range").textContent = "";
+            return;
+        }
+        resetReadout();
+    }
+
+    function resetReadout() {
+        cancelAnimationFrame(frame);
+        hasResult = false;
+        shownBmi = null;
+        readout.dataset.state = "empty";
+        delete readout.dataset.category;
+        output.textContent = "00.0";
+        $("message").textContent = "Enter your weight and height";
+        $("detail").textContent = "";
+        $("range").textContent = "";
+        $("sr-status").textContent = "";
+    }
+
+    /* --- wiring --- */
+
+    // A number input reports "" for text it cannot parse (such as "1e"), so
+    // pass a marker the validator rejects instead of letting it read as empty.
+    const raw = (input) => (input.validity.badInput ? "?" : input.value);
+
+    function compute() {
+        return computeResult({
+            weight: raw(fields.weight.input),
+            height: raw(fields.height.input),
+            inches: raw(inchesInput),
+            system: currentSystem(),
+        });
+    }
+
+    function update() {
+        clearErrors();
+        const result = compute();
+        const anyInput = ![fields.weight.input, fields.height.input, inchesInput]
+            .every(isBlank);
+        if (!result.errors) {
+            showResult(result);
+            return;
+        }
+        showIncomplete(anyInput);
+        // Wait for the user to pause before calling an unfinished number wrong.
+        errorTimer = setTimeout(() => showErrors(result.errors, false), ERROR_DELAY_MS);
     }
 
     function applySystem() {
@@ -209,34 +371,65 @@ function initUi() {
         document.querySelector('[data-unit="weight"]').textContent = units.weightUnit;
         document.querySelector('[data-unit="height"]').textContent = units.heightUnit;
         inchesWrap.hidden = system !== "imperial";
+        configureSliders();
     }
 
+    const trim = (n) => String(Math.round(n * 10) / 10);
+
+    fields.weight.slider.addEventListener("input", () => {
+        fields.weight.input.value = trim(Number(fields.weight.slider.value));
+        markTouched(fields.weight.slider);
+        setFill(fields.weight.slider);
+        update();
+    });
+
+    fields.height.slider.addEventListener("input", () => {
+        const value = Number(fields.height.slider.value);
+        markTouched(fields.height.slider);
+        if (currentSystem() === "imperial") {
+            fields.height.input.value = Math.floor(value / 12);
+            inchesInput.value = value % 12;
+        } else {
+            fields.height.input.value = value;
+        }
+        setFill(fields.height.slider);
+        update();
+    });
+
+    for (const input of [fields.weight.input, fields.height.input, inchesInput]) {
+        input.addEventListener("input", () => {
+            syncSlidersFromInputs();
+            update();
+        });
+        // Leaving a field is a clear signal the user is done with it.
+        input.addEventListener("change", () => {
+            const result = compute();
+            if (result.errors) showErrors(result.errors, false);
+        });
+    }
+
+    // A form with several fields and no submit button does not submit on Enter
+    // by itself, so ask it to.
+    form.addEventListener("keydown", (event) => {
+        if (event.key === "Enter" && event.target.tagName === "INPUT" &&
+            event.target.type === "number") {
+            event.preventDefault();
+            form.requestSubmit();
+        }
+    });
+
+    // Enter key: show every problem, including missing fields.
     form.addEventListener("submit", (event) => {
         event.preventDefault();
-        clearErrors();
-        const result = computeResult({
-            weight: fields.weight.input.value,
-            height: fields.height.input.value,
-            inches: inchesInput.value,
-            system: currentSystem(),
-        });
-        if (result.errors) {
-            // A number input reports "" for text it cannot parse (e.g. "1e"),
-            // which would otherwise read as "empty".
-            const unparsable = { weight: fields.weight.input, height: fields.height.input };
-            for (const [name, input] of Object.entries(unparsable)) {
-                const bad = input.validity.badInput ||
-                    (name === "height" && inchesInput.validity.badInput);
-                if (bad) result.errors[name] = "Enter a valid number.";
-            }
-            showErrors(result.errors);
-        }
-        else showResult(result);
+        const result = compute();
+        if (!result.errors) return;
+        const first = showErrors(result.errors, true);
+        if (first) first.focus();
     });
 
     form.addEventListener("reset", () => {
         clearErrors();
-        hideResult();
+        resetReadout();
         // The browser restores the default (metric) radio after this event.
         setTimeout(() => {
             applySystem();
@@ -250,7 +443,7 @@ function initUi() {
             for (const { input } of Object.values(fields)) input.value = "";
             inchesInput.value = "";
             clearErrors();
-            hideResult();
+            resetReadout();
             applySystem();
         });
     }
