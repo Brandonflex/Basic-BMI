@@ -1,34 +1,79 @@
 <!DOCTYPE html>
-<html>
-    <head>
-        <link href="bmi.css">
-        <title>BMI</title>
-    </head>
-    <body>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>BMI Calculator</title>
+    <link rel="stylesheet" href="bmi.css">
+</head>
+<body>
+    <main class="card">
+        <h1>BMI Calculator</h1>
+        <p class="lead">Body mass index for adults (18 and over).</p>
 
-        <div>
-            <div> 
-                <h2>
-                    BMI calculator-DEMO.BRandon
-                </h2>
-                <label for="weight">weight in KG</label>
-                <input id="weight" type="numbers" >
-        
-                <br>
-        
-                <label for="height">height in (INCHES)</label>
-                <input id="height" type="mumbers">
-        
-                <button onclick="calculateBmi()">Submit</button>
-                <button onclick="reload()">clear</button>
-        
-                <h4 id="heading"></h4>
-                <h4 id="bmi-output"></h4>
-                <h4 id="message"></h4>
+        <form id="bmi-form" novalidate>
+            <fieldset class="units">
+                <legend class="visually-hidden">Units</legend>
+                <label class="units__option">
+                    <input type="radio" name="units" value="metric" checked>
+                    <span>Metric</span>
+                </label>
+                <label class="units__option">
+                    <input type="radio" name="units" value="imperial">
+                    <span>Imperial</span>
+                </label>
+            </fieldset>
+
+            <div class="field">
+                <label for="weight">Weight (<span data-unit="weight">kg</span>)</label>
+                <input id="weight" name="weight" type="number" inputmode="decimal"
+                       min="0" step="any" autocomplete="off" required>
             </div>
-        </div>
 
+            <div class="field">
+                <label for="height">Height (<span data-unit="height">cm</span>)</label>
+                <input id="height" name="height" type="number" inputmode="decimal"
+                       min="0" step="any" autocomplete="off" required>
+            </div>
 
-        <script src="bmi.js"></script>
-    </body>
+            <p id="error" class="error" role="alert" hidden></p>
+
+            <div class="actions">
+                <button type="submit" class="btn btn--primary">Calculate</button>
+                <button type="reset" class="btn">Clear</button>
+            </div>
+        </form>
+
+        <section id="result" class="result" aria-live="polite" hidden>
+            <p class="result__label">Your BMI</p>
+            <p class="result__value" id="bmi-output"></p>
+            <p class="result__category" id="message"></p>
+
+            <div class="scale" aria-hidden="true">
+                <div class="scale__bar">
+                    <span class="scale__seg scale__seg--under"></span>
+                    <span class="scale__seg scale__seg--healthy"></span>
+                    <span class="scale__seg scale__seg--over"></span>
+                    <span class="scale__seg scale__seg--obese"></span>
+                    <span class="scale__marker" id="marker"></span>
+                </div>
+            </div>
+
+            <ul class="legend">
+                <li class="legend__item legend__item--under">Underweight <span>&lt; 18.5</span></li>
+                <li class="legend__item legend__item--healthy">Healthy <span>18.5&ndash;24.9</span></li>
+                <li class="legend__item legend__item--over">Overweight <span>25&ndash;29.9</span></li>
+                <li class="legend__item legend__item--obese">Obese <span>30+</span></li>
+            </ul>
+        </section>
+
+        <p class="note">
+            BMI is a screening measure, not a diagnosis. It does not account for
+            muscle mass, age or body composition. Talk to a health professional
+            about your results.
+        </p>
+    </main>
+
+    <script src="bmi.js"></script>
+</body>
 </html>
