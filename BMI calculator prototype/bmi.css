@@ -6,12 +6,19 @@
     --border: #cfd4de;
     --accent: #1f5fbf;
     --accent-hover: #184c99;
+    --on-accent: #ffffff;
     --error: #b3261e;
 
     --under: #5b8def;
     --healthy: #3da66a;
     --over: #e0a030;
     --obese: #d2504a;
+
+    /* Darker variants for text, to keep contrast on the card surface */
+    --under-text: #2a58b8;
+    --healthy-text: #1f7444;
+    --over-text: #8a5600;
+    --obese-text: #b3302a;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -23,7 +30,13 @@
         --border: #3a4254;
         --accent: #5b8def;
         --accent-hover: #7aa3f5;
+        --on-accent: #0d1626;
         --error: #ff8a80;
+
+        --under-text: #7fa6f7;
+        --healthy-text: #5fc58b;
+        --over-text: #ecb54d;
+        --obese-text: #f0827c;
     }
 }
 
@@ -37,8 +50,8 @@ body {
     margin: 0;
     min-height: 100vh;
     display: grid;
-    place-items: center;
-    padding: 1rem;
+    place-items: start center;
+    padding: clamp(1rem, 8vh, 4rem) 1rem 1rem;
     background: var(--bg);
     color: var(--text);
     font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
@@ -106,7 +119,7 @@ h1 {
 
 .units__option input:checked + span {
     background: var(--accent);
-    color: #fff;
+    color: var(--on-accent);
 }
 
 .units__option input:focus-visible + span {
@@ -125,30 +138,57 @@ h1 {
     font-weight: 600;
 }
 
-.field input {
+.field__row {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.input-wrap {
+    position: relative;
+    flex: 1;
+}
+
+.input-wrap input {
     width: 100%;
-    padding: 0.6rem 0.75rem;
+    padding: 0.6rem 2.75rem 0.6rem 0.75rem;
     font: inherit;
     color: inherit;
     background: var(--surface);
     border: 1px solid var(--border);
     border-radius: 8px;
+    appearance: textfield;
+    -moz-appearance: textfield;
 }
 
-.field input:focus-visible {
+.input-wrap input::-webkit-outer-spin-button,
+.input-wrap input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+.input-wrap input:focus-visible {
     outline: 2px solid var(--accent);
     outline-offset: 1px;
     border-color: var(--accent);
 }
 
-.field input[aria-invalid="true"] {
+.input-wrap input[aria-invalid="true"] {
     border-color: var(--error);
 }
 
-.error {
-    margin: 0 0 1rem;
+.input-wrap__unit {
+    position: absolute;
+    top: 50%;
+    right: 0.75rem;
+    transform: translateY(-50%);
+    color: var(--muted);
+    pointer-events: none;
+}
+
+.field__error {
+    margin: 0.35rem 0 0;
     color: var(--error);
-    font-size: 0.9rem;
+    font-size: 0.85rem;
 }
 
 /* Buttons */
@@ -179,7 +219,7 @@ h1 {
 
 .btn--primary {
     flex: 1;
-    color: #fff;
+    color: var(--on-accent);
     background: var(--accent);
     border-color: var(--accent);
 }
@@ -214,10 +254,10 @@ h1 {
     font-weight: 600;
 }
 
-.result[data-category="under"]   .result__category { color: var(--under); }
-.result[data-category="healthy"] .result__category { color: var(--healthy); }
-.result[data-category="over"]    .result__category { color: var(--over); }
-.result[data-category="obese"]   .result__category { color: var(--obese); }
+.result[data-category="under"]   .result__category { color: var(--under-text); }
+.result[data-category="healthy"] .result__category { color: var(--healthy-text); }
+.result[data-category="over"]    .result__category { color: var(--over-text); }
+.result[data-category="obese"]   .result__category { color: var(--obese-text); }
 
 /* Scale: 15 -> 40 BMI mapped across the bar. Segment widths = range / 25. */
 .scale__bar {

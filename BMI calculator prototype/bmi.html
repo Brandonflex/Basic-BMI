@@ -25,18 +25,34 @@
             </fieldset>
 
             <div class="field">
-                <label for="weight">Weight (<span data-unit="weight">kg</span>)</label>
-                <input id="weight" name="weight" type="number" inputmode="decimal"
-                       min="0" step="any" autocomplete="off" required>
+                <label for="weight">Weight</label>
+                <div class="field__row">
+                    <div class="input-wrap">
+                        <input id="weight" name="weight" type="number" inputmode="decimal"
+                               min="0" step="any" autocomplete="off" aria-describedby="weight-error">
+                        <span class="input-wrap__unit" data-unit="weight">kg</span>
+                    </div>
+                </div>
+                <p id="weight-error" class="field__error" hidden></p>
             </div>
 
             <div class="field">
-                <label for="height">Height (<span data-unit="height">cm</span>)</label>
-                <input id="height" name="height" type="number" inputmode="decimal"
-                       min="0" step="any" autocomplete="off" required>
+                <label for="height">Height</label>
+                <div class="field__row">
+                    <div class="input-wrap">
+                        <input id="height" name="height" type="number" inputmode="decimal"
+                               min="0" step="any" autocomplete="off" aria-describedby="height-error">
+                        <span class="input-wrap__unit" data-unit="height">cm</span>
+                    </div>
+                    <div class="input-wrap" id="inches-wrap" hidden>
+                        <input id="inches" name="inches" type="number" inputmode="decimal"
+                               min="0" step="any" autocomplete="off" aria-label="Height, inches"
+                               aria-describedby="height-error">
+                        <span class="input-wrap__unit">in</span>
+                    </div>
+                </div>
+                <p id="height-error" class="field__error" hidden></p>
             </div>
-
-            <p id="error" class="error" role="alert" hidden></p>
 
             <div class="actions">
                 <button type="submit" class="btn btn--primary">Calculate</button>

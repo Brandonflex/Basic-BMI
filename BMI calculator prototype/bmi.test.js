@@ -2,12 +2,16 @@
 const assert = require("node:assert/strict");
 const { computeResult, categorize } = require("./bmi.js");
 
-// Metric
-assert.equal(computeResult("70", "175", "metric").bmi, 22.9);
-assert.equal(computeResult("70", "175", "metric").category.id, "healthy");
+const metric = (weight, height) => computeResult({ weight, height, system: "metric" });
+const imperial = (weight, height, inches) => computeResult({ weight, height, inches, system: "imperial" });
 
-// Imperial matches the classic 703 formula: 150 lb, 65 in -> 25.0
-assert.equal(computeResult("150", "65", "imperial").bmi, 25.0);
+// Metric
+assert.equal(metric("70", "175").bmi, 22.9);
+assert.equal(metric("70", "175").category.id, "healthy");
+
+// Imperial matches the classic lb/in formula (x703): 150 lb, 5 ft 5 in -> 25.0
+assert.equal(imperial("150", "5", "5").bmi, 25.0);
+assert.equal(imperial("150", "5", "").bmi, 29.3); // inches optional
 
 // Category boundaries (on the displayed, one-decimal value)
 assert.equal(categorize(18.4).id, "under");
@@ -18,13 +22,30 @@ assert.equal(categorize(29.9).id, "over");
 assert.equal(categorize(30.0).id, "obese");
 
 // No gap between 24.9 and 25: 72.13 kg at 170 cm is 24.96, displays as 25.0
-const edge = computeResult("72.13", "170", "metric");
+const edge = metric("72.13", "170");
 assert.equal(edge.bmi, 25.0);
 assert.equal(edge.category.id, "over");
 
-// Validation
-for (const [w, h] of [["", "170"], ["70", ""], ["0", "170"], ["-5", "170"], ["abc", "170"], ["70", "1.75"], ["7000", "170"]]) {
-    assert.ok(computeResult(w, h, "metric").errors, `expected error for ${w}/${h}`);
+// Validation: each case reports an error on the expected field
+const invalid = [
+    [metric("", "170"), "weight"],
+    [metric("70", ""), "height"],
+    [metric("0", "170"), "weight"],
+    [metric("-5", "170"), "weight"],
+    [metric("abc", "170"), "weight"],
+    [metric("70", "1.75"), "height"], // metres instead of cm
+    [metric("7000", "170"), "weight"],
+    [imperial("150", "", ""), "height"],
+    [imperial("150", "5", "12"), "height"],
+    [imperial("150", "5", "-1"), "height"],
+    [imperial("150", "50", "0"), "height"],
+];
+for (const [result, field] of invalid) {
+    assert.ok(result.errors?.[field], `expected an error on ${field}`);
 }
+
+// Both errors are reported together
+const both = metric("", "");
+assert.ok(both.errors.weight && both.errors.height);
 
 console.log("All tests passed");
